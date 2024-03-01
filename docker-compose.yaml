@@ -1,35 +1,37 @@
-version: "3" # docker version
-services: #specifying the nginx server details. You can name it anything. Instead of www in prev. project, we call it web here
-  #For Server
-  web:
-    image: nginx:latest #this is for the registry where docker looks for the image to use to build the app
-    ports:
-      - "80:80" # for looking into our project on our local machine
-      - "443:443" # for future SSL traffic
-    volumes: # creating a mapping between the files and folders on our host system to preserve development data whenever we run "docker compose"
-      - ./nginx/conf.d/default.conf:/etc/nginx/conf.d/default.conf
+services:
+    # nginx
+    web:
+        image: garyclarke/nginx-php:1.0
+        ports:
+            - "80:80"
+    # php
+    app:
+        image: garyclarke/php-composer:1.2
+        environment:
+            MYSQL_HOST: db
+            MYSQL_PORT: ${MYSQL_PORT}
+            MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+            MYSQL_DATABASE: ${MYSQL_DATABASE}
+            MYSQL_USER: ${MYSQL_USER}
+            REDIS_HOST: cache
+            REDIS_PORT: ${REDIS_PORT}
+        extra_hosts:
+            # Ensure that host.docker.internal is correctly defined on Linux
+            - host.docker.internal:host-gateway
+    # mysql
+    db:
+        image: mysql:8.0
+        volumes:
+            - mysqldata:/var/lib/mysql
+        restart: always
+        environment:
+            MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD}
+            MYSQL_USER: ${MYSQL_USER}
+            MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+            MYSQL_DATABASE: ${MYSQL_DATABASE}
+    # redis
+    cache:
+        image: redis:latest
 
-  # For PHP
-  app: #application files will live in this image
-    build:
-      dockerfile: ./php/Dockerfile
-    volumes:
-      - ./app:/app
-
-  # For mysql
-  db:
-    image: mysql:8.0
-    volumes:
-      - mysqldata:/var/lib/mysql
-    ports:
-      - "3306:3306"
-    restart: unless-stopped # to make sure our database is up and running all the time
-    environment:
-      MYSQL_ROOT_PASSWORD: secret
-      MYSQL_USER: user
-      MYSQL_PASSWORD: secret
-      MYSQL_DATABASE: docker-php
-
-  # For Redis
-  volumes:
-    mysqldata: # giving it this empty value will make docker figure out the best way and place to get publish data
+volumes:
+    mysqldata:
